@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 from tempfile import TemporaryDirectory
 
 import codecs
+import gzip
 import json
 import kafka
 import logging
@@ -40,6 +41,7 @@ class KafkaRestore:
                 r"(?P<topic>" + re.escape(topic) + r")"
                 r"-(?P<partition>[0-9]+)"
                 r"-(?P<offset>[0-9]+)"
+                r"(?P<suffix>[.a-z]*)"
             )
         )
 
@@ -56,6 +58,8 @@ class KafkaRestore:
                     "begin_offset": int(begin_offset),
                     "object_name": item,
                 }
+                if matches.group("suffix") == ".gz":
+                    record["compression"] = "gzip"
                 topic_partition_files[partition].append(record)
 
         for partition in topic_partition_files:
@@ -91,30 +95,36 @@ class KafkaRestore:
                 for partition in topic_partition_files:
                     if topic_partition_files[partition]:
                         progress = True
-                        object_name = topic_partition_files[partition][0]["object_name"]
+                        object_record = topic_partition_files[partition][0]
+                        object_name = object_record["object_name"]
                         local_name = f"{working_directory}/{topic}-{partition}"
 
                         self.object_storage.get_contents_to_file(object_name, local_name)
 
-                        with open(local_name, "r") as fh:
-                            nrecords = 0
-                            for line in fh.readlines():
-                                key, value, offset, timestamp = self.parse_record(line.strip())
-                                future_record = self.kafka_producer.send(
-                                    topic,
-                                    partition=partition,
-                                    key=key,
-                                    value=value,
-                                    timestamp_ms=timestamp,
-                                )
-                                nrecords += 1
-                                partition_offset_records[partition] = {
-                                    "last_original_offset": offset,
-                                    "last_produced_record": future_record,
-                                }
+                        if object_record.get("compression") == "gzip":
+                            fh = gzip.open(local_name, "rt")
+                        else:
+                            fh = open(local_name, "r")
+
+                        nrecords = 0
+                        for line in fh.readlines():
+                            key, value, offset, timestamp = self.parse_record(line.strip())
+                            future_record = self.kafka_producer.send(
+                                topic,
+                                partition=partition,
+                                key=key,
+                                value=value,
+                                timestamp_ms=timestamp,
+                            )
+                            nrecords += 1
+                            partition_offset_records[partition] = {
+                                "last_original_offset": offset,
+                                "last_produced_record": future_record,
+                            }
 
                         self.log.info("Restored %d messages from object %r", nrecords, object_name)
 
+                        fh.close()
                         os.unlink(local_name)
                         topic_partition_files[partition] = topic_partition_files[partition][1:]
 
