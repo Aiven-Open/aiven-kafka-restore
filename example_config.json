@@ -1,0 +1,13 @@
+{
+    "kafka": {
+        "kafka_url": "kafka-example.aivencloud.com:11397",
+        "ssl_ca_file": "ca.crt",
+        "ssl_access_certificate_file": "service.crt",
+        "ssl_access_key_file": "service.key"
+    },
+    "object_storage": {
+        "type": "gcs",
+        "bucket": "example-backup-bucket",
+        "credentials_file": "example-gcs-credentials.json"
+    }
+}
