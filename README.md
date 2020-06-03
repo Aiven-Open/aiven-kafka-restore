@@ -12,9 +12,13 @@ This tool can download and restore Kafka messages stored in GCS by Aiven Kafka G
 
 The are current limitations with the tool:
 
-  * The tool supports the default filename format only (topic-partition-start_offset). Prefix for subdirectories is supported, however.
+  * The restored topic needs to exists in the desired configuration, including partition count.
+  * The tool supports the default filename format only (<topic>-<partition>-<start_offset>). Prefix for subdirectories is supported, however.
   * The tool supports the default record format only (key,value,offset,timestamp).
   * The tool is unable to restore consumer group offsets, but does output offset difference between the original and the new cluster. This difference can be used to adjust consumers to the correct location, but does require manual work.
+  * The tool applies all records, and cannot skip by e.g. timestamp / retention.
+
+We plan to address these shortcomings in the near future.
 
 ## Usage
 
