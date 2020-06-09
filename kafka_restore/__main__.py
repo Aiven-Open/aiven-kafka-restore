@@ -5,6 +5,8 @@ from argparse import ArgumentParser
 from tempfile import TemporaryDirectory
 
 import codecs
+import datetime
+import dateutil
 import gzip
 import json
 import kafka
@@ -56,6 +58,7 @@ class KafkaRestore:
                 begin_offset = matches.group("offset")
                 record = {
                     "begin_offset": int(begin_offset),
+                    "last_modified": item.last_modified,
                     "object_name": item.name,
                 }
                 if matches.group("suffix") == ".gz":
@@ -88,17 +91,24 @@ class KafkaRestore:
     def restore(self, *, topic):
         topic_partition_files = self.list_topic_data_files(topic=topic)
         partition_offset_records = {}
+        since = self.config.get("since")
 
         with TemporaryDirectory() as working_directory:
             while True:
                 progress = False
                 for partition in topic_partition_files:
                     if topic_partition_files[partition]:
-                        progress = True
                         object_record = topic_partition_files[partition][0]
-                        object_name = object_record["object_name"]
-                        local_name = f"{working_directory}/{topic}-{partition}"
+                        topic_partition_files[partition] = topic_partition_files[partition][1:]
+                        progress = True
 
+                        object_name = object_record["object_name"]
+
+                        if since is not None and since > object_record["last_modified"]:
+                            self.log.info("Skipping object %r due to timestamp", object_name)
+                            continue
+
+                        local_name = f"{working_directory}/{topic}-{partition}"
                         self.object_storage.get_contents_to_file(object_name, local_name)
 
                         if object_record.get("compression") == "gzip":
@@ -126,7 +136,6 @@ class KafkaRestore:
 
                         fh.close()
                         os.unlink(local_name)
-                        topic_partition_files[partition] = topic_partition_files[partition][1:]
 
                 if not progress:
                     self.kafka_producer.flush()
@@ -147,10 +156,18 @@ def main():
     parser = ArgumentParser()
     parser.add_argument("-c", "--config", required=True, help="Path to config file")
     parser.add_argument("-t", "--topic", required=True, help="Topic name")
+    parser.add_argument("--since", help="Skip objects that are older than given timestamp")
     args = parser.parse_args()
 
     with open(args.config) as fh:
         restore_config = json.load(fh)
+
+    if args.since:
+        dt = dateutil.parser.parse(args.since)
+        if dt.tzinfo is None:
+            # assume UTC if no timezone is present
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        restore_config["since"] = dt
 
     kafka_restore = KafkaRestore(config=restore_config)
 
