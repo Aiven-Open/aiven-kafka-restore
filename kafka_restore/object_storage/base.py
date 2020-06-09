@@ -1,10 +1,14 @@
 # Copyright (c) 2020 Aiven, Helsinki, Finland. https://aiven.io/
 
 import codecs
+import collections
 import datetime
 import dateutil.parser
 import dateutil.tz
 import logging
+
+
+StoredObject = collections.namedtuple("StoredObject", ["name", "size", "last_modified"])
 
 
 class ObjectStorageProvider:

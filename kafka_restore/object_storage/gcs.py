@@ -1,6 +1,6 @@
 # Copyright (c) 2020 Aiven, Helsinki, Finland. https://aiven.io/
 
-from .base import ObjectStorageProvider
+from .base import ObjectStorageProvider, StoredObject
 from collections import namedtuple
 from contextlib import contextmanager
 from googleapiclient.discovery import build
@@ -173,7 +173,11 @@ class GCSProvider(ObjectStorageProvider):
     def list_items(self):
         for item in self._iter_keys(path=self.prefix):
             if item.type == KEY_TYPE_OBJECT:
-                yield item.value["name"]
+                yield StoredObject(
+                    name=item.value["name"],
+                    size=item.value["size"],
+                    last_modified=item.value["last_modified"],
+                )
 
     def get_contents_to_file(self, key, filepath):
         fileobj = FileIO(filepath, mode="wb")

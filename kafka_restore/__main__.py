@@ -48,7 +48,7 @@ class KafkaRestore:
         topic_partition_files = {}
 
         for item in self.object_storage.list_items():
-            matches = topic_re.match(item)
+            matches = topic_re.match(item.name)
             if matches:
                 partition = int(matches.group("partition"))
                 if partition not in topic_partition_files:
@@ -56,7 +56,7 @@ class KafkaRestore:
                 begin_offset = matches.group("offset")
                 record = {
                     "begin_offset": int(begin_offset),
-                    "object_name": item,
+                    "object_name": item.name,
                 }
                 if matches.group("suffix") == ".gz":
                     record["compression"] = "gzip"
