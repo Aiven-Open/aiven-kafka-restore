@@ -50,7 +50,11 @@ class KafkaRestore:
         topic_partition_files = {}
 
         for item in self.object_storage.list_items():
-            matches = topic_re.match(item.name)
+            if self.object_storage.prefix:
+                matches = topic_re.match(item.name.removeprefix(self.object_storage.prefix))
+            else:
+                matches = topic_re.match(item.name)
+
             if matches:
                 partition = int(matches.group("partition"))
                 if partition not in topic_partition_files:
