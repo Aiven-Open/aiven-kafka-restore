@@ -29,13 +29,20 @@ class KafkaRestore:
 
         kafka_config = self.config.get("kafka", {})
 
-        self.kafka_producer = kafka.KafkaProducer(
-            bootstrap_servers=kafka_config["kafka_url"],
-            security_protocol="SSL",
-            ssl_cafile=kafka_config["ssl_ca_file"],
-            ssl_certfile=kafka_config["ssl_access_certificate_file"],
-            ssl_keyfile=kafka_config["ssl_access_key_file"],
-        )
+        if ("ssl_cafile" in kafka_config and
+                "ssl_access_certificate_file" in kafka_config and
+                "ssl_access_key_file" in kafka_config):
+            self.kafka_producer = kafka.KafkaProducer(
+                bootstrap_servers=kafka_config["kafka_url"],
+                security_protocol="SSL",
+                ssl_cafile=kafka_config["ssl_ca_file"],
+                ssl_certfile=kafka_config["ssl_access_certificate_file"],
+                ssl_keyfile=kafka_config["ssl_access_key_file"],
+            )
+        else:
+            self.kafka_producer = kafka.KafkaProducer(
+                bootstrap_servers=kafka_config["kafka_url"],
+            )
 
     def list_topic_data_files(self, *, topic):
         topic_re = re.compile(
