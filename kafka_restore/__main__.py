@@ -20,6 +20,7 @@ class KafkaRestore:
         self.log = logging.getLogger(self.__class__.__name__)
         self.config = config
 
+        request_timeout = self.config.get("timeout")
         object_storage_config = self.config.get("object_storage", {})
         object_storage_type = object_storage_config.get("type")
         if object_storage_type == "gcs":
@@ -38,10 +39,12 @@ class KafkaRestore:
                 ssl_cafile=kafka_config["ssl_ca_file"],
                 ssl_certfile=kafka_config["ssl_access_certificate_file"],
                 ssl_keyfile=kafka_config["ssl_access_key_file"],
+                request_timeout_ms=request_timeout
             )
         else:
             self.kafka_producer = kafka.KafkaProducer(
                 bootstrap_servers=kafka_config["kafka_url"],
+                request_timeout_ms=request_timeout
             )
 
     def list_topic_data_files(self, *, topic):
@@ -99,6 +102,7 @@ class KafkaRestore:
         topic_partition_files = self.list_topic_data_files(topic=topic)
         partition_offset_records = {}
         since = self.config.get("since")
+        request_timeout = self.config.get("timeout")
 
         with TemporaryDirectory() as working_directory:
             while True:
@@ -145,7 +149,7 @@ class KafkaRestore:
                         os.unlink(local_name)
 
                 if not progress:
-                    self.kafka_producer.flush()
+                    self.kafka_producer.flush(timeout=request_timeout)
                     break
 
         for partition in sorted(partition_offset_records):
@@ -164,6 +168,7 @@ def main():
     parser.add_argument("-c", "--config", required=True, help="Path to config file")
     parser.add_argument("-t", "--topic", required=True, help="Topic name")
     parser.add_argument("--since", help="Skip objects that are older than given timestamp")
+    parser.add_argument('--timeout', type=int, default=300000, help='Restore batch timeout (ms) of kafka producer')
     args = parser.parse_args()
 
     with open(args.config) as fh:
@@ -175,6 +180,9 @@ def main():
             # assume UTC if no timezone is present
             dt = dt.replace(tzinfo=datetime.timezone.utc)
         restore_config["since"] = dt
+    if args.timeout:
+        print("using request timeout of ", args.timeout, " ms")
+        restore_config["timeout"] = args.timeout
 
     kafka_restore = KafkaRestore(config=restore_config)
 
