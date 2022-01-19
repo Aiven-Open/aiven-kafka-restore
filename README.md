@@ -1,12 +1,12 @@
-# Aiven Kafka Restore Utility
+# Aiven Restore Utility for Apache Kafka®
 
-Utility for restoring Kafka topic data backed up with [Aiven Kafka GCS Connector](https://github.com/aiven/aiven-kafka-connect-gcs)
+Utility for restoring Apache Kafka topic data backed up with [Aiven Kafka GCS Connector](https://github.com/aiven/aiven-kafka-connect-gcs)
 
 [GitHub repository](https://github.com/aiven/aiven-kafka-restore)
 
 ## How It Works
 
-This tool can download and restore Kafka messages stored in GCS by Aiven Kafka GCS Connector.
+This tool can download and restore Apache Kafka messages stored in GCS by Aiven Kafka GCS Connector.
 
 ## Limitations
 
@@ -56,3 +56,7 @@ Optional prefix for subdirectories can be specified using `prefix` key under the
   5. Either configure consumers (re-)start from the latest offset.
   6. If consumer location needs to be adjusted and one has the offset information, the offset difference can be applied to adjust consumer start location.
   7. Once the consumers are running, you can (re-)enable producers as well.
+
+## Trademarks
+
+Apache Kafka, Apache Kafka Connect are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.
