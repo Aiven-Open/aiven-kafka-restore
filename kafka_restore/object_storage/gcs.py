@@ -53,8 +53,10 @@ class GCSProvider(ObjectStorageProvider):
                 raise ValueError(f"Unknown credentials type {credentials_type}")
         self.bucket_name = self.config["bucket"]
         self.prefix = self.config.get("prefix")
-        if self.prefix and self.prefix[-1] == "/":
-            self.prefix = self.prefix[:-1]
+
+        if self.prefix and self.prefix[-1] != "/":
+            self.prefix = self.prefix + "/"
+
         self.gs = self._init_google_client()
         self.gs_object_client = None
 
@@ -166,7 +168,7 @@ class GCSProvider(ObjectStorageProvider):
                         )
                 elif property_name == "prefixes":
                     for prefix in items:
-                        yield IterKeyItem(type=KEY_TYPE_PREFIX, value=prefix.rstrip("/"))
+                        yield IterKeyItem(type=KEY_TYPE_PREFIX, value=prefix)
                 else:
                     raise NotImplementedError(property_name)
 
@@ -191,9 +193,6 @@ class GCSProvider(ObjectStorageProvider):
                 os.unlink(filepath)
 
     def get_contents_to_fileobj(self, key, fileobj):
-        if self.prefix:
-            key = f"{self.prefix}/{key}"
-
         self.log.debug("Starting to fetch the contents of: %r to %r", key, fileobj)
         last_log_output = 0.0
         with self._object_client() as clob:
